@@ -55,15 +55,14 @@ DL_CHEST/
 ---
 
 ## 🧠 모델 구성
-
+- **모델 비교 실험**: `fastai.ipynb` 파일을 통해 여러 모델을 1 epoch 학습 후 정확도 비교
+  - 결과: `resnet34` > `efficientnet_b0` > `resnet18` > `densenet121` > `resnet50` → ResNet34 최종 채택
 - **Backbone**: ResNet34 (pretrained)
 - **출력 구조**: `Linear(512 → 2)` → CrossEntropyLoss 사용
 - **학습률 스케줄러**: `CyclicLR` 적용
   - `base_lr=1e-5`, `max_lr=1e-3`
   - `step_size_up = 2 에포크`
   - Adam 옵티마이저 + `cycle_momentum=False`
-- **모델 비교 실험**: `fastai.ipynb` 파일을 통해 여러 모델을 1 epoch 학습 후 정확도 비교
-  - 결과: `resnet34` > `efficientnet_b0` > `resnet18` > `densenet121` > `resnet50` → ResNet34 최종 채택
 
 ---
 
