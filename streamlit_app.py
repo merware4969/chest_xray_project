@@ -125,22 +125,6 @@ def generate_gradcam(model, image_tensor, class_idx):
     h2.remove()
     return cam
 
-# -----------------------------
-# 빠른 ROC 커브 (시뮬레이션)
-# -----------------------------
-def plot_mock_roc():
-    fpr = np.array([0.0, 0.1, 0.3, 0.6, 0.9, 1.0])
-    tpr = np.array([0.0, 0.6, 0.8, 0.9, 0.96, 1.0])
-    roc_auc = auc(fpr, tpr)
-
-    fig, ax = plt.subplots()
-    ax.plot(fpr, tpr, color='blue', label=f"AUC = {roc_auc:.2f}")
-    ax.plot([0, 1], [0, 1], linestyle='--', color='gray')
-    ax.set_xlabel('거짓 양성 비율')
-    ax.set_ylabel('진짜 양성 비율')
-    ax.set_title('ROC 커브')
-    ax.legend(loc="lower right")
-    st.pyplot(fig)
 
 # -----------------------------
 # Streamlit UI 구성
@@ -156,33 +140,54 @@ with st.sidebar:
         default_index=0
     )
 
-st.title("🧠 ResNet34 기반 폐렴 분류 모델 시각화")
+st.markdown("<h2 style='font-size:34px;'>ResNet34 기반 흉부 X-ray 폐렴 이진 분류</h2>", unsafe_allow_html=True)
 model = load_model()
-class_names = ['정상', '폐렴']
+class_names = ['NORMAL', 'PNEUMONIA']
 
 if selected == "📊 ROC 커브":
-    st.header("📊 샘플 기반 ROC 커브")
-    plot_mock_roc()
+    st.subheader("📈 ROC Curve (Test Set 기준)")
+    roc_image_path = "roc/roc_curve.png"
+
+    if os.path.exists(roc_image_path):
+        st.image(roc_image_path, caption="ROC Curve (Test Set)", use_column_width=True)
+    else:
+        st.warning("ROC 이미지 파일이 존재하지 않습니다. 먼저 ROC 커브를 생성하세요.")
 
 elif selected == "🔥 Grad-CAM 시각화":
-    st.header("🔥 Grad-CAM 시각화")
-    image_files = [f for f in os.listdir("train_samples") if f.lower().endswith(('jpg', 'jpeg', 'png'))]
+    st.header("🔥 Grad-CAM 시각화 (Test Set 이미지)")
+    
+    # test 하위 폴더 선택
+    category = st.selectbox("클래스를 선택하세요", ["NORMAL", "PNEUMONIA"])
+    folder_path = os.path.join("test", category)
+    
+    image_files = [f for f in os.listdir(folder_path) if f.lower().endswith(('jpg', 'jpeg', 'png'))]
+
     if image_files:
         img_name = st.selectbox("이미지를 선택하세요", image_files)
-        path = os.path.join("train_samples", img_name)
+        path = os.path.join(folder_path, img_name)
         img_tensor, orig_img = preprocess_image(path)
         pred_class, _ = predict(model, img_tensor)
         cam = generate_gradcam(model, img_tensor, pred_class)
         cam_resized = cv2.resize(cam, orig_img.size)
 
+        # 시각화
         fig, ax = plt.subplots()
         ax.imshow(orig_img)
         ax.imshow(cam_resized, cmap='jet', alpha=0.5, interpolation='bilinear')
-        ax.set_title(f"예측 클래스: {class_names[pred_class]}")
+        ax.set_title(f"Predicted Class: {class_names[pred_class]}")
         ax.axis('off')
         st.pyplot(fig)
+
+        # 저장 버튼
+        if st.button("🖼️ 이미지 저장하기"):
+            save_dir = "saved_gradcam"
+            os.makedirs(save_dir, exist_ok=True)
+            save_path = os.path.join(save_dir, f"gradcam_{category}_{img_name}")
+            fig.savefig(save_path, dpi=300, bbox_inches='tight')
+            plt.close(fig)
+            st.toast("✅ Grad-CAM 이미지가 저장되었습니다!", icon="🎉")
     else:
-        st.warning("train_samples 폴더에 이미지가 없습니다.")
+        st.warning(f"{category} 폴더에 이미지가 없습니다.")
 
 elif selected == "🧪 추론":
     st.header("🧪 테스트 이미지 추론")
